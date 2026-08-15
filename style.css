@@ -31,9 +31,6 @@ header{
   max-width:1100px;margin:0 auto 16px;
 }
 .logo{display:flex;align-items:center;gap:10px;font-size:1.3rem;font-weight:800;letter-spacing:-0.5px;}
-.sync-mini{
-  font-size:.78rem;color:#d9d0fb;
-}
 
 .kw-bar{
   max-width:1100px;margin:0 auto;

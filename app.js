@@ -1,7 +1,6 @@
 /* =========================================================
    Einkaufsplaner – Anwendungslogik
-   Datenhaltung: localStorage (offline-fähig, Basis für spätere
-   OneDrive/Graph-API-Synchronisierung).
+   Datenhaltung: localStorage (offline-fähig, pro Gerät getrennt).
    ========================================================= */
 
 const STORAGE_KEY = 'einkaufsplaner_data_v1';

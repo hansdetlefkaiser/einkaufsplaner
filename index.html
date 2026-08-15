@@ -8,6 +8,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Einkaufsplaner">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +18,6 @@
 <header>
   <div class="header-top">
     <div class="logo">🛒 Einkaufsplaner</div>
-    <div class="sync-mini" id="sync-mini">OneDrive-Synchronisierung: folgt (nächster Baustein)</div>
   </div>
   <div class="kw-bar">
     <button onclick="goPrevWeek()" title="Vorherige Woche">‹</button>
@@ -30,7 +32,7 @@
 
 <main>
   <div class="note-banner">
-    ℹ️ Deine Daten werden lokal in diesem Browser gespeichert. Solange die OneDrive-Anbindung noch fehlt, gleichen sich Geräte noch nicht automatisch ab.
+    ℹ️ Deine Daten werden lokal auf diesem Gerät gespeichert.
   </div>
 
   <div class="picker-row">
