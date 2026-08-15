@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einkaufsplaner</title>
+<meta name="theme-color" content="#2a1466">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">🛒 Einkaufsplaner</div>
+    <div class="sync-mini" id="sync-mini">OneDrive-Synchronisierung: folgt (nächster Baustein)</div>
+  </div>
+  <div class="kw-bar">
+    <button onclick="goPrevWeek()" title="Vorherige Woche">‹</button>
+    <div class="kw-label">
+      <div class="kw-num" id="kw-num">KW – · –</div>
+      <div class="kw-range" id="kw-range">–</div>
+      <button class="today-link" id="today-link" onclick="goToday()" style="display:none;">Zur aktuellen Woche</button>
+    </div>
+    <button onclick="goNextWeek()" title="Nächste Woche">›</button>
+  </div>
+</header>
+
+<main>
+  <div class="note-banner">
+    ℹ️ Deine Daten werden lokal in diesem Browser gespeichert. Solange die OneDrive-Anbindung noch fehlt, gleichen sich Geräte noch nicht automatisch ab.
+  </div>
+
+  <div class="picker-row">
+    <select id="cat-select" onchange="selectCat(this.value)"></select>
+    <span class="progress-pill" id="progress-pill">0 von 0 erledigt</span>
+  </div>
+
+  <div class="add-row">
+    <input type="text" id="new-item" placeholder="Artikel eintragen …">
+    <select id="new-group"></select>
+    <button onclick="addItem()">+ Hinzufügen</button>
+  </div>
+  <div class="hint-line">⏭ = Artikel nicht gefunden/erhalten → wird automatisch in die nächste Woche übernommen.</div>
+
+  <div id="list-body"></div>
+
+  <div class="excel-line">
+    📊 Erledigte Einkäufe werden im Jahresprotokoll gesammelt.
+    <button onclick="exportExcel()">Jetzt als Excel exportieren</button>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
