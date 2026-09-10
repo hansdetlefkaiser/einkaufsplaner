@@ -78,28 +78,54 @@ function uid(){
   return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 }
 
-/* ---------- Wochen-Verwaltung inkl. automatischer "nicht erhalten"-Übernahme ---------- */
+/* ---------- Wochen-Verwaltung ---------- */
 
-function ensureWeek(weekKey, monday){
-  if(STORE.weeks[weekKey]) return;
-  STORE.weeks[weekKey] = {};
-  CATS.forEach(c => STORE.weeks[weekKey][c.id] = []);
-
-  const prevMonday = new Date(monday);
-  prevMonday.setDate(monday.getDate() - 7);
-  const prevKey = weekKeyOf(prevMonday);
-  const prevWeek = STORE.weeks[prevKey];
-  if(prevWeek){
-    CATS.forEach(c => {
-      (prevWeek[c.id] || []).forEach(it => {
-        if(it.status === 'carry' && !it.movedOn){
-          STORE.weeks[weekKey][c.id].push({ id: uid(), g: it.g, n: it.n, status: 'open' });
-          it.movedOn = true;
-        }
-      });
-    });
+/* Legt die Struktur einer Woche an, falls sie noch nicht existiert.
+   Enthält KEINE Übernahme-Logik mehr: Artikel werden beim Klick auf ⏭
+   sofort in die Folgewoche verschoben (siehe carryToNextWeek). */
+function ensureWeek(weekKey){
+  if(!STORE.weeks[weekKey]){
+    STORE.weeks[weekKey] = {};
+    CATS.forEach(c => STORE.weeks[weekKey][c.id] = []);
+    saveStore();
   }
-  saveStore();
+  return STORE.weeks[weekKey];
+}
+
+/* Montag einer ISO-Kalenderwoche, ausgehend von Jahr und Wochennummer. */
+function mondayOfIsoWeek(year, week){
+  const monday = mondayOf(new Date(year, 0, 4));
+  monday.setDate(monday.getDate() + (week - 1) * 7);
+  return monday;
+}
+
+/* Einmalige Bereinigung alter Daten:
+   Artikel, die mit der früheren Logik als "carry" markiert wurden, aber nie
+   in der Folgewoche angekommen sind, werden jetzt dorthin verschoben.
+   Bereits übernommene Artikel (movedOn) werden nur noch aus der alten Woche entfernt. */
+function migrateCarryItems(){
+  let changed = false;
+  Object.keys(STORE.weeks).forEach(weekKey => {
+    const m = /^(\d{4})-W(\d{2})$/.exec(weekKey);
+    if(!m) return;
+    const nextMonday = mondayOfIsoWeek(Number(m[1]), Number(m[2]));
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    const nextKey = weekKeyOf(nextMonday);
+
+    CATS.forEach(c => {
+      const list = STORE.weeks[weekKey][c.id] || [];
+      for(let i = list.length - 1; i >= 0; i--){
+        const it = list[i];
+        if(it.status !== 'carry') continue;
+        if(!it.movedOn){
+          ensureWeek(nextKey)[c.id].push({ id: uid(), g: it.g, n: it.n, status: 'open' });
+        }
+        list.splice(i, 1);
+        changed = true;
+      }
+    });
+  });
+  if(changed) saveStore();
 }
 
 /* ---------- Anwendungs-Zustand ---------- */
@@ -107,7 +133,8 @@ function ensureWeek(weekKey, monday){
 let active = (STORE.ui && STORE.ui.active) || 'supermarkt';
 let currentMonday = (STORE.ui && STORE.ui.mondayISO) ? mondayOf(new Date(STORE.ui.mondayISO)) : mondayOf(new Date());
 let currentWeekKey = weekKeyOf(currentMonday);
-ensureWeek(currentWeekKey, currentMonday);
+migrateCarryItems();
+ensureWeek(currentWeekKey);
 
 function persistUiState(){
   STORE.ui = { active, mondayISO: currentMonday.toISOString() };
@@ -122,7 +149,7 @@ function goToday(){ currentMonday = mondayOf(new Date()); afterWeekChange(); }
 
 function afterWeekChange(){
   currentWeekKey = weekKeyOf(currentMonday);
-  ensureWeek(currentWeekKey, currentMonday);
+  ensureWeek(currentWeekKey);
   persistUiState();
   renderAll();
 }
@@ -180,12 +207,27 @@ function toggleDone(itemId){
   renderList();
 }
 
-function toggleCarry(itemId){
-  const it = currentItems().find(i => i.id === itemId);
-  if(!it) return;
-  it.status = (it.status === 'carry') ? 'open' : 'carry';
+/* ⏭ – Artikel nicht gefunden/erhalten:
+   Der Artikel wird SOFORT in die Folgewoche derselben Einkaufsort-Liste
+   verschoben und verschwindet aus der aktuellen Woche. */
+function carryToNextWeek(itemId){
+  const items = currentItems();
+  const idx = items.findIndex(i => i.id === itemId);
+  if(idx === -1) return;
+  const it = items[idx];
+
+  const nextMonday = new Date(currentMonday);
+  nextMonday.setDate(currentMonday.getDate() + 7);
+  const nextKey = weekKeyOf(nextMonday);
+
+  ensureWeek(nextKey)[active].push({ id: uid(), g: it.g, n: it.n, status: 'open' });
+  items.splice(idx, 1);
+
   saveStore();
   renderList();
+
+  const info = isoWeekInfo(nextMonday);
+  showToast(`„${it.n}“ in KW ${info.week} verschoben.`);
 }
 
 function delItem(itemId){
@@ -242,7 +284,7 @@ function renderList(){
   const groups = {};
   items.forEach(i => { (groups[i.g] = groups[i.g] || []).push(i); });
   const groupNames = Object.keys(groups).sort((a,b) => a.localeCompare(b,'de'));
-  const rank = i => i.status === 'carry' ? 1 : (i.status === 'done' ? 2 : 0);
+  const rank = i => i.status === 'done' ? 1 : 0;
 
   let html = '';
   groupNames.forEach(g => {
@@ -253,12 +295,10 @@ function renderList(){
     html += `<div class="group"><div class="group-title">${escapeHtml(g)}</div>`;
     list.forEach(i => {
       const done = i.status === 'done';
-      const carry = i.status === 'carry';
-      html += `<div class="item ${done ? 'done' : ''} ${carry ? 'carry' : ''}">
-        <input type="checkbox" ${done ? 'checked' : ''} ${carry ? 'disabled' : ''} onchange="toggleDone('${i.id}')">
+      html += `<div class="item ${done ? 'done' : ''}">
+        <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleDone('${i.id}')">
         <span class="name">${escapeHtml(i.n)}</span>
-        ${carry ? '<span class="carry-badge">→ nächste Woche</span>' : ''}
-        ${!done ? `<button class="carry-btn ${carry ? 'active' : ''}" title="Nicht gefunden/erhalten – in nächste Woche verschieben" onclick="toggleCarry('${i.id}')">⏭</button>` : ''}
+        ${!done ? `<button class="carry-btn" title="Nicht gefunden/erhalten – in nächste Woche verschieben" onclick="carryToNextWeek('${i.id}')">⏭</button>` : ''}
         <button class="del" title="Entfernen" onclick="delItem('${i.id}')">✕</button>
       </div>`;
     });
