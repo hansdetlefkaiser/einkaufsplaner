@@ -5,7 +5,7 @@
    CACHE_NAME muss hochgezählt werden (z.B. v2, v3, …), sonst laden
    Geräte weiterhin die alte, zwischengespeicherte Version. */
 
-const CACHE_NAME = 'einkaufsplaner-v2';
+const CACHE_NAME = 'einkaufsplaner-v4';
 const APP_SHELL = [
   './',
   './index.html',
